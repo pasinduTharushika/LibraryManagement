@@ -8,12 +8,16 @@ namespace LibraryManagement.Domain.Entities
 {
     public class BorrowRecord
     {
-        public int Id { get; private set; }
-        public int BookId { get; private set; }
-        public int MemberId { get; private set; }
-        public DateTime BorrowDate { get; private set; } = DateTime.UtcNow;
-        public DateTime? ReturnDate { get; private set; }
+        public int Id { get; set; }
 
-        public void ReturnBook() => ReturnDate = DateTime.UtcNow;
+        public int MemberId { get; set; }
+        public Member Member { get; set; }
+
+        public int BookId { get; set; }
+        public Book Book { get; set; }
+
+        public DateTime BorrowDate { get; set; } = DateTime.UtcNow;
+        public DateTime? ReturnDate { get; set; }
+        public bool IsReturned { get; set; } = false;
     }
 }

@@ -1,5 +1,4 @@
-﻿
-using Core.Entities;
+﻿using Core.Entities;
 using Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -18,15 +17,24 @@ public class AuthService : IAuthService
         _userRepository = userRepository;
     }
 
+    // Validate user using MD5 hashing
     public async Task<User?> ValidateUserAsync(string username, string password)
     {
         var user = await _userRepository.GetByUsernameAsync(username);
-        if (user == null || user.Password != password) // Use hashed passwords in real apps!
+
+        if (user == null)
+            return null;
+
+        // Hash incoming password and compare
+        string hashedInput = password.ToMd5Hash();
+
+        if (!string.Equals(user.Password, hashedInput, StringComparison.OrdinalIgnoreCase))
             return null;
 
         return user;
     }
 
+    // Generate JWT token
     public string GenerateJwtToken(User user)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
@@ -45,22 +53,26 @@ public class AuthService : IAuthService
             claims: claims,
             expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtSettings["ExpiryMinutes"])),
             signingCredentials: creds);
-        Console.WriteLine("Generated Token: " + token);
+
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    // Register user using MD5 hashing
     public async Task<User?> RegisterUserAsync(string username, string email, string password)
     {
-        if (await _userRepository.GetByUsernameAsync(username) is not null ||
-            await _userRepository.GetByEmailAsync(email) is not null)
+        if (await _userRepository.GetByUsernameAsync(username) != null ||
+            await _userRepository.GetByEmailAsync(email) != null)
         {
-            return null; // Username or email already exists
+            return null; // User exists
         }
+
+        string hashedPassword = password.ToMd5Hash();
 
         var user = new User
         {
             Name = username,
             Email = email,
-            Password = password // For real apps: hash this using BCrypt
+            Password = hashedPassword
         };
 
         return await _userRepository.AddAsync(user);

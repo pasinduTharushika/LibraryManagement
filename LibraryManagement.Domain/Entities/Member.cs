@@ -8,8 +8,11 @@ namespace LibraryManagement.Domain.Entities
 {
     public class Member
     {
-        public int Id { get; private set; }
-        public string Name { get; private set; } = string.Empty;
-        public string Email { get; private set; } = string.Empty;
+        public int Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public DateTime JoinedDate { get; set; } = DateTime.UtcNow;
+        public bool IsActive { get; set; } = true;
     }
 }
