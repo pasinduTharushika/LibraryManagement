@@ -1,80 +1,96 @@
 ﻿using Core.Entities;
 using Core.Interfaces;
+using LibraryManagement.Application.DTO;
+using LibraryManagement.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-public class AuthService : IAuthService
+public class AuthService : IAuthService 
 {
     private readonly IConfiguration _configuration;
-    private readonly IUserRepository _userRepository;
+    private readonly IAuthRepository _authRepository;
+    
 
-    public AuthService(IConfiguration configuration, IUserRepository userRepository)
+    public AuthService(IConfiguration configuration, IAuthRepository authRepository)
     {
         _configuration = configuration;
-        _userRepository = userRepository;
+        _authRepository = authRepository;
     }
 
     // Validate user using MD5 hashing
-    public async Task<User?> ValidateUserAsync(string username, string password)
+    public async Task<LoginResponseDto> ValidateUserAsync(string username, string password)
     {
-        var user = await _userRepository.GetByUsernameAsync(username);
-
+        UserDetailsDto user = await _authRepository.ValidateUserAsync(username,password);
+       
         if (user == null)
-            return null;
+            return new  LoginResponseDto { Error="Invalid User" };
+        string token = GenerateJwtToken(user);
 
-        // Hash incoming password and compare
-        string hashedInput = password.ToMd5Hash();
-
-        if (!string.Equals(user.Password, hashedInput, StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        return user;
+        return new LoginResponseDto { Token = token };
     }
 
     // Generate JWT token
-    public string GenerateJwtToken(User user)
+    public string GenerateJwtToken(UserDetailsDto user)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSettings["Secret"])
+        );
+
+        var creds = new SigningCredentials(
+            key,
+            SecurityAlgorithms.HmacSha256
+        );
+
+        var claims = new List<Claim>
+    {
+        new Claim("Id", user.Id.ToString()),
+        new Claim("UserName", user.UserName)
+    };
+
+        // Add roles (important fix)
+        if (user.RoleDetails != null)
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Name)
-        };
+            foreach (var role in user.RoleDetails)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role.RoleName));
+            }
+        }
 
         var token = new JwtSecurityToken(
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtSettings["ExpiryMinutes"])),
-            signingCredentials: creds);
+            expires: DateTime.UtcNow.AddMinutes(
+                Convert.ToDouble(jwtSettings["ExpiryMinutes"])
+            ),
+            signingCredentials: creds
+        );
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     // Register user using MD5 hashing
-    public async Task<User?> RegisterUserAsync(string username, string email, string password)
+    public async Task<bool> RegisterUserAsync(string username, string email, string password)
     {
-        if (await _userRepository.GetByUsernameAsync(username) != null ||
-            await _userRepository.GetByEmailAsync(email) != null)
+        if (await _authRepository.CheckUserExistsAsync(username,email))
         {
-            return null; // User exists
+            return false; // User exists
         }
 
         string hashedPassword = password.ToMd5Hash();
 
-        var user = new User
+        var user = new UserDetailsDto
         {
-            Name = username,
+            UserName = username,
             Email = email,
             Password = hashedPassword
         };
 
-        return await _userRepository.AddAsync(user);
+        return await _authRepository.AddAsync(user);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Core.DTO;
 using Core.Interfaces;
+using LibraryManagement.Application.DTO;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,15 +19,12 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequestDTO request)
     {
         var user = await _authService.ValidateUserAsync(request.Username, request.Password);
-        if (user == null)
-            return Unauthorized("Invalid credentials");
 
-        var token = _authService.GenerateJwtToken(user);
-        return Ok(new { Token = token });
+        return Ok(new { Token = user.Token,Error =user.Error });
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] Core.DTO.RegisterRequest request)
+    public async Task<IActionResult> Register([FromBody] SignupRequestDto request)
     {
         var user = await _authService.RegisterUserAsync(request.Username, request.Email, request.Password);
 

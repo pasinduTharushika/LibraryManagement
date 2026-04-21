@@ -1,5 +1,6 @@
 ﻿
 using Core.Entities;
+using LibraryManagement.Application.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,8 +11,7 @@ namespace Core.Interfaces
 {
     public interface IAuthService
     {
-        string GenerateJwtToken(User user);
-        Task<User?> ValidateUserAsync(string username, string password);
-        Task<User?> RegisterUserAsync(string username, string email, string password);
+        Task<LoginResponseDto> ValidateUserAsync(string username, string password);
+        Task<bool> RegisterUserAsync(string username, string email, string password);
     }
 }
