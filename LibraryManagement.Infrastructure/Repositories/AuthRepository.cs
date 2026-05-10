@@ -23,7 +23,7 @@ namespace LibraryManagement.Infrastructure.Repositories
         {
            
             //check valid user 
-            var userDetailsDto = await _context.Users
+            var userDetailsDto = await _context.Users.AsNoTracking()
              .Where(u => u.Name == username)
              .Select(u => new UserDetailsDto
              {
